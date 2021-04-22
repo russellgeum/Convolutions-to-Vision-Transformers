@@ -5,7 +5,7 @@ This repository shows CvT structure for self-attention and Cross-Attention.
 In particular,  
 Even if Cross-Attention maps of different sizes are injected, CA maps are interpolated to match the size of the SA feature maps.  
 Paper URL  
-[CvT: Introducing Convolutions to Vision Transforemrs](https://arxiv.org/abs/2103.15808)
+1. [CvT: Introducing Convolutions to Vision Transforemrs](https://arxiv.org/abs/2103.15808)
 # Usage
 ## Self-Attention of CvT
 ```
