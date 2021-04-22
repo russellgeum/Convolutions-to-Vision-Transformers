@@ -1,5 +1,5 @@
 # CvT: Introducing Convolutions to Vision Transformers
-Custom variation of CvT  
+Custom variation of Convolution to Vision Transformers  
 Existing CvT implementations have no consideration for Cross-Attention  
 This repository shows CvT structure for self-attention and Cross-Attention.
 In particular,  
