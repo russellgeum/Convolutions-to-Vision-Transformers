@@ -123,6 +123,7 @@ outputs  = CrossCvT(image1, image2)
 ## Example 2
 Heterogenous Network
 
+```
 image1  = torch.ones(size = [1, 8, 32, 32])
 image2  = torch.ones(size = [1, 8, 32, 32])
 SelfCvT = SelfAttention_ConvolutionTransfomer(
@@ -141,5 +142,6 @@ CrossCvT = CrossAttention_ConvolutionTransformer(
                             dim_mlp = 32)
 hidden1 = SelfCvT(image1)
 outputs = CrossCvT(hidden1, image2)
+```
 # Acknowledgement
 Base CvT coe is borrowed from @rishikksh20 repo: https://github.com/rishikksh20/convolution-vision-transformers
