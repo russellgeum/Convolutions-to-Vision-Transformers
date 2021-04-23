@@ -144,4 +144,4 @@ hidden1 = SelfCvT(image1)
 outputs = CrossCvT(hidden1, image2)
 ```
 # Acknowledgement
-Base CvT coe is borrowed from @rishikksh20 repo: https://github.com/rishikksh20/convolution-vision-transformers
+Base CvT code is borrowed from @rishikksh20 repo: https://github.com/rishikksh20/convolution-vision-transformers
