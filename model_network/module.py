@@ -54,7 +54,15 @@ class SepConv2D(nn.Module):
 Convolution Self Attention
 '''
 class ConvSelfAttention(nn.Module):
-    def __init__(self, self_feature_size, heads, dim_head, in_channels = 64, kernel_size = (3, 3), q_stride = 1, k_stride = 1, v_stride = 1):
+    def __init__(self, 
+                 self_feature_size,
+                 heads, 
+                 dim_head,
+                 in_channels = 64, 
+                 kernel_size = (3, 3), 
+                 q_stride = 1, 
+                 k_stride = 1, 
+                 v_stride = 1):
         super(ConvSelfAttention, self).__init__()
         '''
         Args
@@ -181,7 +189,16 @@ class ConvSelfAttention(nn.Module):
 Convolution Cross Attention
 '''
 class ConvCrossAttention(nn.Module):
-    def __init__(self, self_feature_size, cross_faetures_size, heads, dim_head, in_channels = 64, kernel_size = (3, 3), q_stride = 1, k_stride = 1, v_stride = 1):
+    def __init__(self, 
+                 self_feature_size, 
+                 cross_faetures_size, 
+                 heads, 
+                 dim_head, 
+                 in_channels = 64,
+                 kernel_size = (3, 3),
+                 q_stride = 1,
+                 k_stride = 1,
+                 v_stride = 1):
         super(ConvCrossAttention, self).__init__()
         '''
         Args
