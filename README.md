@@ -122,7 +122,10 @@ torch.Size([8, 3, 64, 128])
 ```
   
 # Acknowledgement  
-Base CvT code is borrowed from @rishikksh20 repo: https://github.com/rishikksh20/convolution-vision-transformers  
+Base CvT code is borrowed from @rishikksh20  
+repo: https://github.com/rishikksh20/convolution-vision-transformers  
+Base Embedding code is borrowed from @FrancescoSaverioZuppichini  
+repo: https://github.com/FrancescoSaverioZuppichini/ViT  
   
 # 향후 대응할 목록  
 1. 크로스 어텐션에서 서로 다른 사이즈의 텐서가 들어왔을 경우  
