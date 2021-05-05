@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch import einsum
 
+from torch import einsum
 from einops import rearrange
+
 """
 사용 설명서
 class SepConv2D: Q, K, V를 계산하는 클래스
@@ -11,12 +12,10 @@ class ConvSelfAttention: 이전 입력 모두를 Q, K, V에 사용하는 클래�
 class ConvCrossAttention: 이전 입력을 Q, K에 사용하고 다른 피처를 V에 사용하는 클래스
 class FeedForward: 어텐션의 출력을 FFN으로 transform하는 클래스
 class SelfPreNorm
-        LayerNorm을 SelfAttention하고 같이 사용
+    LayerNorm을 SelfAttention하고 같이 사용
 class CrossPreNOrm
-        LayerNorm을 CrossAttention하고 같이 사용
+    LayerNorm을 CrossAttention하고 같이 사용
 """
-
-
 
 class SepConv2D(nn.Module):
     """
@@ -57,6 +56,60 @@ class SepConv2D(nn.Module):
         return out
 
 
+
+class FeedFoward(nn.Module):
+    """
+    FeedForward Network
+    """
+    def __init__(self, in_channels ,dim_mlp):
+        super(FeedFoward, self).__init__()
+        self.net = nn.Sequential(
+                        nn.Linear(in_channels, dim_mlp),
+                        nn.GELU(),
+                        nn.Linear(dim_mlp, in_channels))
+    
+    def forward(self, inputs):
+        out = self.net(inputs)
+        return out
+
+
+
+class SelfPreNorm(nn.Module):
+    """
+    SelfPreNorm: 셀프 어텐션을 사용하는 노름 레이어
+    PreNorm(dim, ConvSelfAttention(**args))
+        self.norm     = nn.LayerNorm(dim)
+        self.function = ConvSelfAttention(**args)
+    """
+    def __init__(self, in_channels, function):
+        super(SelfPreNorm, self).__init__()
+        self.norm     = nn.LayerNorm(in_channels)
+        self.function = function
+
+    def forward(self, x):
+        out = self.function(self.norm(x))
+        return out
+
+
+
+class CrossPreNorm(nn.Module):
+    """
+    CrossPreNorm: 크로스 어텐션을 사용하는 노름 레이어
+    PreNorm(dim, ConvCrossAttention(**args))
+        self.norm     = nn.LayerNorm(dim)
+        self.function = ConvCrossAttention(**args)
+    """
+    def __init__(self, in_channels, function):
+        super(CrossPreNorm, self).__init__()
+        self.norm     = nn.LayerNorm(in_channels)
+        self.function = function
+
+    def forward(self, x1, x2):
+        out = self.function(self.norm(x1), self.norm(x2))
+        return out
+
+
+
 class ConvSelfAttention(nn.Module):
     """
     Convolution Self Attention
@@ -79,7 +132,6 @@ class ConvSelfAttention(nn.Module):
             in_channels:        어텐션 모듈에 입력받을 피처맵의 채널 ([B, C, H, W]에서 C에 해당)
             kernel_size:        (kernel_height, kernel_width),
             q_stride, k_stride, v_stride: Q, K, V에서 작동할 컨볼루션의 스트라이드
-            last_stage:         마지막 어텐션 모듈인지의 여부
         """
         self.size         = size
         self.in_channels  = in_channels
@@ -185,9 +237,8 @@ class ConvSelfAttention(nn.Module):
         attention   = dot_product.softmax(dim = -1)
         
         # 채널 와이즈로 Attention [B head HW HW] * Value [B head HW dim] = [B head HW dim_head]
-        out = einsum('b h i j, b h j d -> b h i d', attention, value)
-        
         # [B head HW dim_head] -> [B HW head*dim_head]
+        out = einsum('b h i j, b h j d -> b h i d', attention, value)
         out = rearrange(out, 'b h n d -> b n (h d)')
         out = self.FFN(out)
         return out
@@ -217,7 +268,6 @@ class ConvCrossAttention(nn.Module):
             in_channels:        어텐션 모듈에 입력받을 피처맵의 채널 ([B, C, H, W]에서 C에 해당)
             kernel_size:        (kernel_height, kernel_width),
             q_stride, k_stride, v_stride: Q, K, V에서 작동할 컨볼루션의 스트라이드
-            last_stage:         마지막 어텐션 모듈인지의 여부
         """
         self.size1 = size1
         self.size2 = size2
@@ -290,17 +340,19 @@ class ConvCrossAttention(nn.Module):
                             cross_features, 'b (l w) n -> b n l w', 
                             l = self.size2[0], 
                             w = self.size2[1])
+
+        
+        # 향후 구현, 크로스 피처나 셀프 피처가 서로 크기 다른 경우 interpolate로 대응해야 함
+
         # cross_features = F.interpolate(input = cross_features,
         #                                 size = (self.size1[0], self.size1[1]), 
         #                                 mode = "bilinear",
         #                                 align_corners = True)
-        self_features  = F.interpolate(input = self_features,
-                                        size = (self.size2[0], self.size2[1]), 
-                                        mode = "bilinear",
-                                        align_corners = True)
-        # 여기까지는 크로스 피처를 셀프 피처의 크기로 interpolate하는 코드
-        # frame에서 feature를 추출하는 conv의 출력 크기는 고정
-        # self feature를 conv하면서 줄여나가면 중간 중간에 들어오는 cross feature 크기로 interpolate 해주어야 함
+        # self_features  = F.interpolate(input = self_features,
+        #                                 size = (self.size2[0], self.size2[1]), 
+        #                                 mode = "bilinear",
+        #                                 align_corners = True)
+
 
         query = self.Q(self_features) 
         query = rearrange(query, 'b (h d) l w -> b h (l w) d', h = self.heads)
@@ -314,60 +366,8 @@ class ConvCrossAttention(nn.Module):
         attention   = dot_product.softmax(dim = -1)
         
         # 채널 와이즈로 Attention [B head HW HW] * Value [B head HW dim_head] = [B head HW dim_head]
-        out = einsum('b h i j, b h j d -> b h i d', attention, value)
-        
         # [B head HW dim_head] -> [B HW head*dim_head]
+        out = einsum('b h i j, b h j d -> b h i d', attention, value)
         out = rearrange(out, 'b h n d -> b n (h d)')
         out = self.FFN(out)
-        return out
-
-
-class FeedFoward(nn.Module):
-    """
-    FeedForward Network
-    """
-    def __init__(self, in_channels ,dim_mlp):
-        super(FeedFoward, self).__init__()
-        self.net = nn.Sequential(
-                        nn.Linear(in_channels, dim_mlp),
-                        nn.GELU(),
-                        nn.Linear(dim_mlp, in_channels))
-    
-    def forward(self, inputs):
-        out = self.net(inputs)
-        return out
-
-
-
-class SelfPreNorm(nn.Module):
-    """
-    SelfPreNorm: 셀프 어텐션을 사용하는 노름 레이어
-    PreNorm(dim, ConvSelfAttention(**args))
-        self.norm     = nn.LayerNorm(dim)
-        self.function = ConvSelfAttention(**args)
-    """
-    def __init__(self, in_channels, function):
-        super(SelfPreNorm, self).__init__()
-        self.norm     = nn.LayerNorm(in_channels)
-        self.function = function
-
-    def forward(self, x):
-        out = self.function(self.norm(x))
-        return out
-
-
-class CrossPreNorm(nn.Module):
-    """
-    CrossPreNorm: 크로스 어텐션을 사용하는 노름 레이어
-    PreNorm(dim, ConvCrossAttention(**args))
-        self.norm     = nn.LayerNorm(dim)
-        self.function = ConvCrossAttention(**args)
-    """
-    def __init__(self, in_channels, function):
-        super(CrossPreNorm, self).__init__()
-        self.norm     = nn.LayerNorm(in_channels)
-        self.function = function
-
-    def forward(self, x1, x2):
-        out = self.function(self.norm(x1), self.norm(x2))
         return out
