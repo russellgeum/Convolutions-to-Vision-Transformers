@@ -1,12 +1,13 @@
 # CvT: Introducing Convolutions to Vision Transformers
-Custom variation of Convolution to Vision Transformers  
-Existing CvT implementations have no consideration for Cross-Attention  
+Custom variation of transformer layer based on Convolution to Vision Transformers.  
+Existing CvT implementations have no consideration for Cross-Attention.  
 This repository shows CvT structure for self-attention and Cross-Attention.
-In particular,  
+In particular, (X, Not yet...)  
 Even if Cross-Attention maps of different sizes are injected,  
 CA maps are interpolated to match the size of the SA feature maps.  
-Paper URL  
+Reference Paper URL  
 - [CvT: Introducing Convolutions to Vision Transforemrs](https://arxiv.org/abs/2103.15808)  
+- [An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale](https://arxiv.org/abs/2010.11929)  
   
 # Hierarchy 
 ```
@@ -27,7 +28,7 @@ Paper URL
         class TokenCrossAttention_ConvolutionTransformer
 ``` 
 # Usage
-## Self-Attention of CvT
+## Self-Attention of CvT (SA-CvT)  
 ```
 image1  = torch.ones([8, 3, 64, 128])
 layer1  = SelfAttention_ConvolutionTransfomer(
@@ -49,7 +50,7 @@ torch.Size([8, 3, 64, 128])
 1540
 ```
   
-## Cross-Attention of CvT
+## Cross-Attention of CvT (CA-CvT)  
 ```
 image1  = torch.ones([8, 3, 64, 128])
 image2  = torch.ones([8, 3, 64, 128])
@@ -73,7 +74,7 @@ torch.Size([8, 3, 64, 128])
 1540
 ```
   
-## Tokenizer Self-Attention of CvT
+## Tokenizer Self-Attention of CvT (TSA-CvT)  
 ```
 image1  = torch.ones([8, 3, 64, 128])
 layer3  = TokenSelfAttention_ConvTransformer(
@@ -96,7 +97,7 @@ torch.Size([8, 3, 64, 128])
 24640
 ```
   
-## Tokenizer Cross-Attention of CvT
+## Tokenizer Cross-Attention of CvT (TCA-CvT)  
 ```
 image1  = torch.ones([8, 3, 64, 128])
 image2  = torch.ones([8, 3, 64, 128])
