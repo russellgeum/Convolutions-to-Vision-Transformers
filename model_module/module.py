@@ -110,9 +110,9 @@ class CrossPreNorm(nn.Module):
 
 
 
-class ConvSelfAttention(nn.Module):
+class SelfConvAttention(nn.Module):
     """
-    Convolution Self Attention
+    Self Convolution Attention
     """
     def __init__(self, 
                  size,
@@ -123,7 +123,7 @@ class ConvSelfAttention(nn.Module):
                  q_stride = 1, 
                  k_stride = 1, 
                  v_stride = 1):
-        super(ConvSelfAttention, self).__init__()
+        super(SelfConvAttention, self).__init__()
         """
         Args
             size:  셀프 피처맵의 사이즈
@@ -244,9 +244,9 @@ class ConvSelfAttention(nn.Module):
         return out
 
 
-class ConvCrossAttention(nn.Module):
+class CrossConvAttention(nn.Module):
     """
-    Convolution Cross Attention
+    CrossConvAttention
     """
     def __init__(self, 
                  size1, 
@@ -258,7 +258,7 @@ class ConvCrossAttention(nn.Module):
                  q_stride = 1,
                  k_stride = 1,
                  v_stride = 1):
-        super(ConvCrossAttention, self).__init__()
+        super(CrossConvAttention, self).__init__()
         """
         Args
             size1:  셀프 피처맵의 사이즈

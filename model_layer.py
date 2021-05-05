@@ -35,7 +35,7 @@ class SelfAttention_ConvolutionTransfomer(nn.Module):
             self.module.append(
                 nn.ModuleList([
                     SelfPreNorm(in_channels, 
-                            ConvSelfAttention(
+                            SelfConvAttention(
                                 size = size, 
                                 heads = heads, 
                                 dim_head = dim_head, 
@@ -80,7 +80,7 @@ class CrossAttention_ConvolutionTransformer(nn.Module):
         self.LayerNorm           = nn.LayerNorm(in_channels)
         
         self.Layer1 = CrossPreNorm(in_channels, 
-                              ConvCrossAttention(
+                              CrossConvAttention(
                                     size1 = size1,
                                     size2 = size2,
                                     in_channels = in_channels,
