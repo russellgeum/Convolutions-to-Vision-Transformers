@@ -19,8 +19,8 @@ Reference Paper URL
         class TensorSplit
         class TensorStack
     module.py
-        class ConvSelfAttention
-        class ConvCrossAttention
+        class SelfConvAttention
+        class CrossConvAttention
 ㄴmodel_layer.py
         class SelfAttention_ConvolutionTransfomer
         class CrossAttention_ConvolutionTransformer
