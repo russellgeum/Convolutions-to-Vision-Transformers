@@ -1,9 +1,7 @@
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from einops import repeat
 from einops.layers.torch import Rearrange
 
 from model_module import *
@@ -11,12 +9,10 @@ from model_module import *
 
 
 class SelfAttention_ConvolutionTransfomer(nn.Module):
-    """
-    Self-Attention을 사용하는 컨볼루션 트랜스포머
-    """
     def __init__(self, size, in_channels, depth = 1, heads = 8, dim_head = 8, dim_mlp = 64):
         super(SelfAttention_ConvolutionTransfomer, self).__init__()
         """
+        Self-Attention을 사용하는 컨볼루션 트랜스포머
         Args:
             size:  [B C H W]
             depth: int
@@ -45,6 +41,13 @@ class SelfAttention_ConvolutionTransfomer(nn.Module):
         self.inverse_shape = Rearrange('b (h w) c -> b c h w', h = size[0], w = size[1])
 
     def forward(self, features):
+        """
+        Args:
+            features: [B C H W]
+
+        returns:
+            features: [B C H W]
+        """
         features = self.forward_shape(features)
         features = self.LayerNorm(features)
 
@@ -58,12 +61,10 @@ class SelfAttention_ConvolutionTransfomer(nn.Module):
 
 
 class CrossAttention_ConvolutionTransformer(nn.Module):
-    """
-    Cross-Attention을 사용하는 컨볼루션 트랜스포머
-    """
     def __init__(self, size1, size2, in_channels, heads = 8, dim_head = 8, dim_mlp = 64):
         super(CrossAttention_ConvolutionTransformer, self).__init__()
         """
+        Cross-Attention을 사용하는 컨볼루션 트랜스포머
         Args:
             size: turple or list
             patch_size: turple or list
@@ -94,7 +95,10 @@ class CrossAttention_ConvolutionTransformer(nn.Module):
         """
         Args:
             self_features:  [B, C, H, W]
-            cross_features: [B, C', H', W']
+            cross_features: [B, C, H, W]
+        
+        returns
+            features: [B, C, H, W]
         """
         # (B C H W) -> (B HW C), 모양을 바꾸는 코드
         self_features = self.self_forward_shape(self_features)
@@ -113,103 +117,108 @@ class CrossAttention_ConvolutionTransformer(nn.Module):
 
 
 
-class TokenSelfAttention_ConvolutionTransformer(nn.Module):
-    def __init__(self, size, patch_size, in_channels, depth = 1, heads = 8, dim_head = 8, dim_mlp = 64):
-        super(TokenSelfAttention_ConvolutionTransformer, self).__init__()
-        """
-        Args:
-            size: turple or list
-            patch_size: turple or list
-            in_channels: int
-            depth: int, Depth of MHSA
-            heads:    int
-            dim_head: int
-            heads * dim_head -> hidden dimension of Q, K, V
-            dim_mlp : MLP dimension of attention
-        """
-        self.patch_height = patch_size[0]
-        self.patch_width  = patch_size[1]
-        self.patch_units  = (int(size[0] / patch_size[0]), int(size[1] / patch_size[1]))
+class LinearToken_ConvolutionTransformer(nn.Module):
+    def __init__(self, size, patch_size, in_channels, embedding_dim, depth, heads = 8, dim_head = 8, dim_mlp = 64):
+        super(LinearToken_ConvolutionTransformer, self).__init__()
+        self.size          = size
+        self.patch_size    = patch_size
+        self.in_channels   = in_channels
+        self.embedding_dim = embedding_dim
+        self.depth         = depth
+        self.heads         = heads
+        self.dim_head      = dim_head
+        self.dim_mlp       = dim_mlp
 
-        self.spliter    = TensorSplit(size, patch_size)
-        self.stacker    = TensorStack(size, patch_size)
+        self.patch_height = int(size[0]/patch_size[0])
+        self.patch_width  = int(size[1]/patch_size[1])
 
-        module_list       = []
-        for index in range(self.patch_units[0] * self.patch_units[1]):
-            layer = SelfAttention_ConvolutionTransfomer(
-                            (self.patch_height, self.patch_width), 
-                            in_channels, 
-                            depth, 
-                            heads, 
-                            dim_head, 
-                            dim_mlp)
-            module_list.append(layer)
-        self.module_list  = nn.ModuleList(module_list)
-    
-    def forward(self, features):
-        splited_features = self.spliter(features)
+        # [B C H W] -> [B (hw) embbeding_dim]
+        self.embbedding = LinearPatchEmbbeding(
+                                in_channels = self.in_channels, 
+                                patch_size = self.patch_size, 
+                                embbeding_dim = self.embedding_dim)
+        self.layernorm  = nn.LayerNorm(self.embedding_dim)
         
-        feature_list = []
-        for module, patch in zip(self.module_list, splited_features):
-            out = module(patch)
-            feature_list.append(out)
+        # [B (hw) embbeding_dim] -> [B embbeding_dim, h, w]
+        self.rearrange  = Rearrange('b (h w) d -> b d h w', h = self.patch_height, w = self.patch_width)
 
-        outputs = self.stacker(feature_list)
-        return outputs
-
-
-
-class TokenCrossAttention_ConvolutionTransformer(nn.Module):
-    """
-    피처맵이나 이미지가 너무 큰 경우 토큰화를 해서 각 패치에 대하여 크로스 어텐션을 수행
-    이 함수의 경우 두 피처맵을 토큰화 할때 같은 사이즈의 패치로 나누더라도, 패치의 갯수가 다르면 계산이 불가능
-    따라서 피처맵의 사이즈와 패치 사이즈가 무조건 동일해야 함
-
-    이후 대응해야 할 부분
-    패치의 사이즈가 달라도 패치의 갯수가 같으면 계산이 가능하므로,
-    이는 이후 크로스 어텐션 내부에서 interpolate하는 방법으로 보완 가능
-    """
-    def __init__(self, size1, size2, patch_size, in_channels, heads = 8, dim_head = 8, dim_mlp = 64):
-        super(TokenCrossAttention_ConvolutionTransformer, self).__init__()
+        # 이 클래스에서는 self_attention의 in_channels가 embbeding_dim이고 size가 패치의 수가 됨 (자른 패치 사이즈에 대해서 임베딩을 이미 하였으므로)
+        self.attention  = SelfAttention_ConvolutionTransfomer(
+                                size = (self.patch_height, self.patch_width),
+                                in_channels = self.embedding_dim,
+                                depth = self.depth,
+                                heads = self.heads,
+                                dim_head = self.dim_head,
+                                dim_mlp = self.dim_mlp)
+    
+    def forward(self, images):
         """
         Args:
-            size: turple or list
-            patch_size: turple or list
-            in_channels: int
-            depth: int, Depth of MHSA
-            heads:    int
-            dim_head: int
-            heads * dim_head -> hidden dimension of Q, K, V
-            dim_mlp : MLP dimension of attention
+            images: [B, C, H, W]
+
+        1. Linear Embbeindg: [B, hw, emb_dim]
+        2. rearrang:  [B, emb_dim, h, w]
+        3. attention: [B, emb_dim, h, w]
+
+        returns
+            features: [B, emb_dim, h, w]
         """
-        self.patch_height = patch_size[0]
-        self.patch_width  = patch_size[1]
-        self.patch_units  = (int(size1[0] / patch_size[0]), int(size1[1] / patch_size[1]))
+        features = self.embbedding(images)
+        features = self.layernorm(features)
 
-        self.self_spliter  = TensorSplit(size1, patch_size)
-        self.cross_spliter = TensorSplit(size2, patch_size)
-        self.stacker       = TensorStack(size1, patch_size)
+        features = self.rearrange(features)
+        features = self.attention(features)
+        return features
 
-        module_list       = []
-        for index in range(self.patch_units[0] * self.patch_units[1]):
-            layer = CrossAttention_ConvolutionTransformer(
-                            (self.patch_height, self.patch_width),
-                            (self.patch_height, self.patch_width),
-                            in_channels,
-                            heads, 
-                            dim_head, 
-                            dim_mlp)
-            module_list.append(layer)
-        self.module_list  = nn.ModuleList(module_list)
 
-    def forward(self, self_features, cross_features):
-        splited_self  = self.self_spliter(self_features)
-        splited_cross = self.cross_spliter(cross_features)
 
-        feature_list  = []
-        for module, self_patch, cross_patch in zip(self.module_list, splited_self, splited_cross):
-            out = module(self_patch, cross_patch)
-            feature_list.append(out)
+class ConvToken_ConvolutionTransformer(nn.Module):
+    def __init__(self, size, patch_size, in_channels, embedding_dim, depth = 1, heads = 8, dim_head = 8, dim_mlp = 64):
+        super(ConvToken_ConvolutionTransformer, self).__init__()
+        self.size          = size
+        self.patch_size    = patch_size
+        self.in_channels   = in_channels
+        self.embedding_dim = embedding_dim
+        self.depth         = depth
+        self.heads         = heads
+        self.dim_head      = dim_head
+        self.dim_mlp       = dim_mlp
 
-        outputs = self.stacker(feature_list)
-        return outputs
+        self.patch_height = int(size[0]/patch_size[0])
+        self.patch_width  = int(size[1]/patch_size[1])
+
+        self.embedding = ConvPatchEmbbeding(
+                            in_channels = self.in_channels,
+                            patch_size = self.patch_size,
+                            embbeding_dim = self.embedding_dim)
+        self.layernorm = nn.LayerNorm(self.embedding_dim)
+
+        self.rearrange = Rearrange('b (h w) d -> b d h w', h = self.patch_height, w = self.patch_width)
+        self.attention = SelfAttention_ConvolutionTransfomer(
+                            size = (self.patch_height, self.patch_width),
+                            in_channels = self.embedding_dim,
+                            depth = self.depth,
+                            heads = self.heads,
+                            dim_head = self.dim_head,
+                            dim_mlp  = self.dim_mlp)
+    
+    def forward(self, images):
+        """
+        Args:
+            images: [B, C, H, W]
+
+        returns
+            features: [B, emb_dim, h, w]
+        """
+        features = self.embedding(images)
+        features = self.layernorm(features)
+
+        features = self.rearrange(features)
+        features = self.attention(features)
+        return features
+
+if __name__ == "__main__":
+    images = torch.ones([4, 3, 64, 64])
+    layer  = ConvToken_ConvolutionTransformer((64, 64), (8, 4), 3, 64, 1, 8, 8, 64)
+    output = layer(images)
+    print(output.shape)

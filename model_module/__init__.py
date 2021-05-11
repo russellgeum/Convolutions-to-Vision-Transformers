@@ -1,8 +1,8 @@
-from .tokenizer import TensorSplit
-from .tokenizer import TensorStack
-
 from .embedding import LinearPatchEmbbeding
 from .embedding import ConvPatchEmbbeding
+
+from .tokenizer import ImageTokenizer
+from .tokenizer import ImageStacker
 
 from .module import SelfConvAttention
 from .module import CrossConvAttention

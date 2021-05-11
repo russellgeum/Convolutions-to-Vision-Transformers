@@ -6,45 +6,51 @@ from einops.layers.torch import Rearrange
 
 
 
-class TensorSplit(nn.Module):
+# 피처 텐서의 토큰을 모양을 유지하지 않고, 펼쳐서 2D matrix 형태로 만들거나
+# 그 2D matrix를 다시 모아, 피처 텐서로 만드는 함수
+class ImageTokenizer(nn.Module):
     """
-    [B C H W]의 피처 텐서나 이미지를 토큰화 해서 나누는 함수
-    (가로부터 나누어서 나열)
+    [B C H W]의 피처 텐서나 이미지를 토큰화해서
+    세로는 토큰의 수, 가로로는 패치 높이 * 패치 사이즈로 변환한 매트릭스로 보내는 레이어
     """
     def __init__(self, size, patch_size):
-        super(TensorSplit, self).__init__()
+        super(ImageTokenizer, self).__init__()
         self.patch_height = patch_size[0]
         self.patch_width  = patch_size[1]
         self.height_unit  = int(size[0] / patch_size[0])
         self.width_unit   = int(size[1] / patch_size[1])
+        self.rearrange    = Rearrange('b c (h p1) (w p2) -> b c (h w) (p1 p2)', 
+                                        p1 = self.patch_height, p2 = self.patch_width)
 
-    def forward(self, images):
-        feature_list = []
-        for hi in range(self.height_unit):
-            for wi in range(self.width_unit):
-                patch = images[:, :, (hi)*self.patch_height : (hi+1)*self.patch_height, (wi)*self.patch_width : (wi+1)*self.patch_width]
-                feature_list.append(patch)
-        
-        return feature_list
+    def forward(self, inputs):
+        """
+        Args:
+            inputs: [B, C, H, W]
+        returns
+            outputs: [B, C, num_of_patches, patch_height * patch_width]
+        """
+        outputs = self.rearrange(inputs)
+        return outputs
+    
 
 
-class TensorStack(nn.Module):
-    """
-    토큰화된 패치를 가로부터 다시 모아서 하나의 피처 텐서나 이미지로 복원하는 함수
-    (가로부터 스택해서 복원)
-    """
+class ImageStacker(nn.Module):
     def __init__(self, size, patch_size):
-        super(TensorStack, self).__init__()
+        super(ImageStacker, self).__init__()
         self.patch_height = patch_size[0]
         self.patch_width  = patch_size[1]
         self.height_unit  = int(size[0] / patch_size[0])
-        self.width_unit   = int(size[1] / patch_size[1])  
-
-    def forward(self, features):
-        B, C, _, _ = features[0].shape
-        stacked_feature = torch.stack(features, dim = 0)
-        stacked_feature = stacked_feature.reshape(self.height_unit, self.width_unit, B, C, self.patch_height, self.patch_width)
-
-        stacked_feature = stacked_feature.permute(2, 3, 0, 4, 1, 5)
-        stacked_feature = stacked_feature.reshape(B, C, self.height_unit * self.patch_height, self.width_unit * self.patch_width)
-        return stacked_feature
+        self.width_unit   = int(size[1] / patch_size[1])
+        self.rearrange    = Rearrange('b c (h w) (p1 p2) ->b c (h p1) (w p2)', 
+                                        h = self.height_unit, w = self.width_unit,
+                                        p1 = self.patch_height, p2 = self.patch_width)
+        
+    def forward(self, inputs):
+        """
+        Args:
+            inputs: [B, C, num_of_patches, patch_height * patch_width]
+        returns
+            outputs: [B, C, H, W]
+        """
+        outputs = self.rearrange(inputs)
+        return outputs
