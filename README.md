@@ -11,7 +11,7 @@ Reference Paper URL
   
 # Hierarchy 
 ```
-ㄴmodel_module
+ㄴmodel_layer/
     embedding.py
         class LinearPatchEmbbeding
         class ConvPatchEmbbeding
@@ -21,7 +21,7 @@ Reference Paper URL
     module.py
         class SelfConvAttention
         class CrossConvAttention
-ㄴmodel_layer.py  
+ㄴmodel_module.py  
         class SelfAttention_ConvolutionTransformer  
         class CrossAttention_ConvolutionTransformer  
         class LinearToken_ConvolutionTransformer  
