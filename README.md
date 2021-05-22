@@ -9,7 +9,7 @@ Reference Paper URL
 - [CvT: Introducing Convolutions to Vision Transforemrs](https://arxiv.org/abs/2103.15808)  
 - [An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale](https://arxiv.org/abs/2010.11929)  
   
-# Hierarchy 
+# Folder 
 ```
 ㄴmodel_layer/
     embedding.py
