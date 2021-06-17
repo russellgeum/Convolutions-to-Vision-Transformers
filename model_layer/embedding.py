@@ -1,14 +1,13 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from einops.layers.torch import Rearrange
 
 
 
-class LinearPatchEmbbeding(nn.Module):
+class LinePatchEmbbeding(nn.Module):
     def __init__(self, in_channels: int, patch_size: tuple, embbeding_dim: int):
-        super(LinearPatchEmbbeding, self).__init__()
+        super(LinePatchEmbbeding, self).__init__()
         self.rearrange = Rearrange('b c (h s1) (w s2) -> b (h w) (s1 s2 c)', s1 = patch_size[0], s2 = patch_size[1])
         self.linear    = nn.Linear(patch_size[0] * patch_size[1] * in_channels, embbeding_dim)
     

@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from einops.layers.torch import Rearrange
 
 
@@ -31,7 +30,7 @@ class ImageTokenizer(nn.Module):
         """
         outputs = self.rearrange(inputs)
         return outputs
-    
+
 
 
 class ImageStacker(nn.Module):

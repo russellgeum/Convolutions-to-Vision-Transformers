@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from torch import einsum
 from einops import rearrange
+
+
 
 """
 사용 설명서
@@ -16,11 +17,7 @@ class SelfPreNorm
 class CrossPreNOrm
     LayerNorm을 CrossAttention하고 같이 사용
 """
-
 class SepConv2D(nn.Module):
-    """
-    Separatble Convoltuion
-    """
     def __init__(self,
                 in_channels,
                 out_channels,
@@ -30,6 +27,8 @@ class SepConv2D(nn.Module):
                 dilation = 1):
         super(SepConv2D, self).__init__()
         """
+        Separatble Convoltuion
+
         Args:
             in_channels: int
             out_channels: int
@@ -111,9 +110,6 @@ class CrossPreNorm(nn.Module):
 
 
 class SelfConvAttention(nn.Module):
-    """
-    Self Convolution Attention
-    """
     def __init__(self, 
                  size,
                  in_channels, 
@@ -125,6 +121,8 @@ class SelfConvAttention(nn.Module):
                  v_stride = 1):
         super(SelfConvAttention, self).__init__()
         """
+        Self Convolution Attention
+
         Args
             size:  셀프 피처맵의 사이즈
             heads:              헤드의 갯수
@@ -136,7 +134,6 @@ class SelfConvAttention(nn.Module):
         self.size         = size
         self.in_channels  = in_channels
         self.kernel_size  = kernel_size
-
         self.heads        = heads
         self.dim_head     = dim_head
         self.out_channels = dim_head * heads
@@ -152,9 +149,7 @@ class SelfConvAttention(nn.Module):
         self.scale        = dim_head ** -0.5
         self.pad          = (kernel_size[0] - q_stride) // 2
 
-        """
-        어텐션 모델을 위한 Q, K, V 정의
-        """
+        # 어텐션 모델을 위한 Q, K, V 정의
         self.Q = SepConv2D(
                     in_channels = self.in_channels, 
                     out_channels = self.out_channels, 
@@ -174,11 +169,9 @@ class SelfConvAttention(nn.Module):
                     stride = self.v_stride,
                     padding = self.pad)
         
-        # self.project_out == True -> Linear
-        # self.project_out == False -> Identity
+        # self.project_out == True -> Linear / self.project_out == False -> Identity
         self.FFN = nn.Sequential(
-                    nn.Linear(self.out_channels, self.in_channels)) if self.project_out else nn.Identity()
-
+            nn.Linear(self.out_channels, self.in_channels)) if self.project_out else nn.Identity()
 
     def forward(self, features):
         """
@@ -205,17 +198,6 @@ class SelfConvAttention(nn.Module):
         """
         batch, length, _, = *features.shape, 
         heads             = self.heads
-
-        # last_stage가 True이면 이 조건문 실행 O, False이면 이 조건문 실행 X
-        # print(features.shape)
-        # if self.last_stage:
-        #     cls_token = features[:, 0]
-        #     print(cls_token.shape)
-        #     features  = features[:, 1:]
-        #     print(features.shape)
-        #     print(cls_token.unsqueeze(1).shape)
-        #     cls_token = rearrange(cls_token.unsqueeze(1), 'b n (h d) -> b h n d', h = heads)
-        #     print(cls_token.shape)
         
         features = rearrange(features, 'b (l w) n -> b n l w', l = self.size[0], w = self.size[1])
 
@@ -225,12 +207,6 @@ class SelfConvAttention(nn.Module):
         key      = rearrange(key, 'b (h d) l w -> b h (l w) d', h = heads)
         value    = self.V(features)
         value    = rearrange(value, 'b (h d) l w -> b h (l w) d', h = heads)
-
-        # if self.last_stage:
-        #     print(query.shape, key.shape, value.shape)
-        #     query = torch.cat((cls_token, query), dim = 2)
-        #     key   = torch.cat((cls_token, key), dim = 2)
-        #     value = torch.cat((cls_token, value), dim = 2)
 
         # 채널 와이즈로 Q, K 곱해서 다시 [B head HW HW] 차원으로 만듬
         dot_product = einsum('b h i d, b h j d -> b h i j', query, key) * self.scale
@@ -245,12 +221,8 @@ class SelfConvAttention(nn.Module):
 
 
 class CrossConvAttention(nn.Module):
-    """
-    CrossConvAttention
-    """
     def __init__(self, 
-                 size1, 
-                 size2, 
+                 size,
                  in_channels,
                  kernel_size = (3, 3),
                  heads = 8, 
@@ -260,6 +232,8 @@ class CrossConvAttention(nn.Module):
                  v_stride = 1):
         super(CrossConvAttention, self).__init__()
         """
+        CrossConvAttention
+
         Args
             size1:  셀프 피처맵의 사이즈
             size2: 크로스 피처맵의 사이즈
@@ -269,11 +243,9 @@ class CrossConvAttention(nn.Module):
             kernel_size:        (kernel_height, kernel_width),
             q_stride, k_stride, v_stride: Q, K, V에서 작동할 컨볼루션의 스트라이드
         """
-        self.size1 = size1
-        self.size2 = size2
+        self.size         = size
         self.in_channels  = in_channels
         self.kernel_size  = kernel_size
-
         self.heads        = heads
         self.dim_head     = dim_head
         self.out_channels = dim_head * heads
@@ -288,16 +260,13 @@ class CrossConvAttention(nn.Module):
         self.scale        = dim_head ** -0.5
         self.pad          = (kernel_size[0] - q_stride) // 2
 
-        """
-        어텐션 모델 정의
-        """
+        # 어텐션 모델 정의
         self.Q = SepConv2D(
                     in_channels = self.in_channels, 
                     out_channels = self.out_channels, 
                     kernel_size = self.kernel_size, 
                     stride = self.q_stride,
                     padding = self.pad)
-
         self.K = SepConv2D(
                     in_channels = self.in_channels, 
                     out_channels = self.out_channels, 
@@ -311,17 +280,16 @@ class CrossConvAttention(nn.Module):
                     stride = self.v_stride,
                     padding = self.pad)
         
-        # self.project_out == True -> Linear
-        # self.project_out == False -> Identity
+        # self.project_out == True -> Linear, self.project_out == False -> Identity
         self.FFN = nn.Sequential(
                     nn.Linear(self.out_channels, self.in_channels)) if self.project_out else nn.Identity()
 
 
-    def forward(self, self_features, cross_features):
+    def forward(self, features1, features2):
         """
         Args:
-            self_features: [B, HW, C]
-            cross_features: [B, HW, C]
+            features1: [B, HW, C]
+            features2: [B, HW, C]
         
         표기법
         b : 배치 사이즈
@@ -332,18 +300,10 @@ class CrossConvAttention(nn.Module):
         return:
             features: [B, HW, C]
         """
-        self_features  = rearrange(
-                            self_features, 'b (l w) n -> b n l w', 
-                            l = self.size1[0], 
-                            w = self.size1[1])
-        cross_features = rearrange(
-                            cross_features, 'b (l w) n -> b n l w', 
-                            l = self.size2[0], 
-                            w = self.size2[1])
+        self_features  = rearrange(features1, 'b (l w) n -> b n l w', l = self.size[0], w = self.size[1])
+        cross_features = rearrange(features2, 'b (l w) n -> b n l w', l = self.size[0], w = self.size[1])
 
-        
         # 향후 구현, 크로스 피처나 셀프 피처가 서로 크기 다른 경우 interpolate로 대응해야 함
-
         # cross_features = F.interpolate(input = cross_features,
         #                                 size = (self.size1[0], self.size1[1]), 
         #                                 mode = "bilinear",
@@ -352,7 +312,6 @@ class CrossConvAttention(nn.Module):
         #                                 size = (self.size2[0], self.size2[1]), 
         #                                 mode = "bilinear",
         #                                 align_corners = True)
-
 
         query = self.Q(self_features) 
         query = rearrange(query, 'b (h d) l w -> b h (l w) d', h = self.heads)
@@ -367,7 +326,7 @@ class CrossConvAttention(nn.Module):
         
         # 채널 와이즈로 Attention [B head HW HW] * Value [B head HW dim_head] = [B head HW dim_head]
         # [B head HW dim_head] -> [B HW head*dim_head]
-        out = einsum('b h i j, b h j d -> b h i d', attention, value)
-        out = rearrange(out, 'b h n d -> b n (h d)')
-        out = self.FFN(out)
-        return out
+        features = einsum('b h i j, b h j d -> b h i d', attention, value)
+        features = rearrange(features, 'b h n d -> b n (h d)')
+        features = self.FFN(features)
+        return features
