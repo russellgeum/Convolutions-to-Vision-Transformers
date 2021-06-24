@@ -177,7 +177,8 @@ class CrossConvTransformer(nn.Module):
         self.in_channels   = in_channels
         self.forward_shape = Rearrange('b c h w -> b (h w) c', h = size[0], w = size[1])
         self.inverse_shape = Rearrange('b (h w) c -> b c h w', h = size[0], w = size[1])
-        self.LayerNorm      = nn.LayerNorm(in_channels) 
+        self.LayerNorm1    = nn.LayerNorm(in_channels)
+        self.LayerNorm2    = nn.LayerNorm(in_channels) 
 
         # 트랜스포머 첫 레이어는 크로스 어텐션
         self.cross_attention  = CrossPreNorm(in_channels, 
@@ -212,16 +213,15 @@ class CrossConvTransformer(nn.Module):
         """
         # 셀프 피처를 (B C H W) -> (B HW C), 모양을 바꾸는 코드
         self_features = self.forward_shape(features1)
-        self_features = self.LayerNorm(self_features)
+        self_features = self.LayerNorm1(self_features)
         
         # 크로스 피처를 (B C H W) -> (B HW C), 모양을 바꾸는 코드
         cross_features = self.forward_shape(features2)
-        cross_features = self.LayerNorm(cross_features)
+        cross_features = self.LayerNorm2(cross_features)
         
         # 셀프 피처와 크로스 피처를 사용해서, 크로스 어텐션 계산하는 코드
         features = self.cross_attention(self_features, cross_features) + cross_features
         features = self.cross_feedforward(features)
-
         for attention, feedforward in self.module: # 셀프 어텐션 계산을 돌리는 반복문
             features = attention(features) + features
             features = feedforward(features) + features
