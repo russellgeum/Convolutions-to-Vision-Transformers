@@ -173,6 +173,7 @@ class SelfConvAttention(nn.Module):
         self.FFN = nn.Sequential(
             nn.Linear(self.out_channels, self.in_channels)) if self.project_out else nn.Identity()
 
+
     def forward(self, features):
         """
         Args:
@@ -218,6 +219,7 @@ class SelfConvAttention(nn.Module):
         out = rearrange(out, 'b h n d -> b n (h d)')
         out = self.FFN(out)
         return out
+
 
 
 class CrossConvAttention(nn.Module):

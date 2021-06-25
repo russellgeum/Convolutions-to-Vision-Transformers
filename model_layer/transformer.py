@@ -42,6 +42,7 @@ class LineTokenConvTransformer(nn.Module):
                             dim_head = self.dim_head,
                             dim_mlp = self.dim_mlp)
     
+
     def forward(self, images):
         """
         Args:
@@ -92,6 +93,7 @@ class ConvTokenConvTransformer(nn.Module):
                             heads = self.heads,
                             dim_head = self.dim_head,
                             dim_mlp  = self.dim_mlp)
+    
     
     def forward(self, images):
         """
