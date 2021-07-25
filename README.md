@@ -71,9 +71,5 @@ Base Embedding code is borrowed from @FrancescoSaverioZuppichini
 repo: https://github.com/FrancescoSaverioZuppichini/ViT  
 # 향후 대응할 목록  
 2021-06-17 업데이트  
+2021-07-26 업데이트  
 1. SwinTransformer와 통합  
-2. 크로스 어텐션에서 서로 다른 사이즈의 텐서가 들어왔을 경우  
-    A1) 셀프 텐서에 크로스 텐서 사이즈를 맞추기  
-    A2) 크로스 텐서에 셀프 텐서 사이즈를 맞추기  
-    A3) 둘 다 대응할 수 있고, F.interpolate로 대응 또는 할 필요가 있을까?  
-        아직은 하지 않는 것이 무게를 두지만, 향후 NAS-aware한 연산에서는 필요할 수도 있을듯...  
