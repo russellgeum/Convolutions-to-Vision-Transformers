@@ -5,21 +5,32 @@ from torch import einsum
 from einops import rearrange
 
 
+
 """
-사용 설명서
-class SepConv2D: Q, K, V를 계산하는 클래스
-class ConvSelfAttention: 이전 입력 모두를 Q, K, V에 사용하는 클래스
-class ConvCrossAttention: 이전 입력을 Q, K에 사용하고 다른 피처를 V에 사용하는 클래스
-class FeedForward: 어텐션의 출력을 FFN으로 transform하는 클래스
-class SelfPreNorm
-    LayerNorm을 SelfAttention하고 같이 사용
-class CrossPreNOrm
-    LayerNorm을 CrossAttention하고 같이 사용
+README
+class LayerNorm
+class SeparableConv2D
+class FeedForward
+class ConvolutionAttnetion (CvT)
 """
-class SepConv2D(nn.Module):
+class LayerNorm(nn.Module):
+    def __init__(self, in_channels):
+        super(LayerNorm, self).__init__()
+        """
+        Attention, FFN 이전에 LayerNorm을 계산
+        """
+        self.norm = nn.LayerNorm(in_channels)
+
+    def forward(self, x):
+        out = self.norm(x)
+        return out
+
+
+
+class SeparableConv2D(nn.Module):
     def __init__(self, 
         in_channels, out_channels, kernel_size, stride = 1, padding = 0, dilation = 1):
-        super(SepConv2D, self).__init__()
+        super(SeparableConv2D, self).__init__()
         """
         Separatble Convoltuion
         1. 채널 수는 유지하고 3x3 컨볼루션 계산
@@ -70,27 +81,12 @@ class FeedForward(nn.Module):
 
 
 
-class PreNorm(nn.Module):
-    def __init__(self, in_channels):
-        super(PreNorm, self).__init__()
-        """
-        Attention, FFN 이전에 LayerNorm을 계산
-        """
-        self.norm = nn.LayerNorm(in_channels)
-
-    def forward(self, x):
-        out = self.norm(x)
-        return out
-
-
-
 class ConvolutionAttention(nn.Module):
     def __init__(self, 
-        size, in_channels, kernel_size = (3, 3), heads = 8, dim_head = 8, q_stride = 1, k_stride = 1, v_stride = 1):
+        size, in_channels, kernel_size = (3, 3), 
+        heads = 8, dim_head = 8, q_stride = 1, k_stride = 1, v_stride = 1):
         super(ConvolutionAttention, self).__init__()
         """
-        Self Convolution Attention
-
         Args
             size:               셀프 피처맵의 사이즈
             heads:              헤드의 갯수
@@ -118,19 +114,19 @@ class ConvolutionAttention(nn.Module):
         self.pad          = (kernel_size[0] - q_stride) // 2
 
         # 어텐션 모델을 위한 Q, K, V 정의
-        self.Q = SepConv2D(
+        self.Q = SeparableConv2D(
             in_channels = self.in_channels, 
             out_channels = self.out_channels, 
             kernel_size = self.kernel_size, 
             stride = self.q_stride,
             padding = self.pad)
-        self.K = SepConv2D(
+        self.K = SeparableConv2D(
             in_channels = self.in_channels, 
             out_channels = self.out_channels, 
             kernel_size = self.kernel_size, 
             stride = self.k_stride,
             padding = self.pad)
-        self.V = SepConv2D(
+        self.V = SeparableConv2D(
             in_channels = self.in_channels, 
             out_channels = self.out_channels, 
             kernel_size = self.kernel_size, 
@@ -157,7 +153,8 @@ class ConvolutionAttention(nn.Module):
         6. 마지막 FFN [B, head*dim, C] weight matrix와 곱해서 [B, HW, C] 형태로 만듬
 
         Args:
-            features1: [B, HW, C], features2: [B, HW, C]
+            features1: [B, HW, C] ~ Q 
+            features2: [B, HW, C] ~ K, V
         return:
             features: [B, HW, C]
         """
