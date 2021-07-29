@@ -1,8 +1,8 @@
 # CvT: Introducing Convolutions to Vision Transformers
-Custom variation of transformer layer based on Convolution to Vision Transformers.  
-This repository shows CvT structure for self-attention and Cross-Attention or Embedding Layer.  
+Implementation Convolution Transformer based on CNN operator.  
+This repository shows CvT structure for attention or embedding Layer.  
 In future, This repository will support SwinTransformer structure.  
-Reference Paper URL  
+Reference Paper  
 - [An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale](https://arxiv.org/abs/2010.11929)  
 - [CvT: Introducing Convolutions to Vision Transforemrs](https://arxiv.org/abs/2103.15808)  
 # Folder 
