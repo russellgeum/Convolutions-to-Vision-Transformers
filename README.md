@@ -55,5 +55,5 @@ repo: https://github.com/rishikksh20/convolution-vision-transformers
 Base Embedding code is borrowed from @FrancescoSaverioZuppichini  
 repo: https://github.com/FrancescoSaverioZuppichini/ViT  
 # 향후 대응할 목록  
-1. SwinTransformer와 통합  
-2. 몇 가지 가능한 Convolutional Attention 구현
+1. SwinTransformer 구현  
+2. 몇 가지 가능한 Convolutional Attention 구현  
