@@ -1,10 +1,12 @@
-# CvT: Introducing Convolutions to Vision Transformers
-Implementation Convolution Transformer based on CNN operator.  
-This repository shows CvT structure for attention or embedding Layer.  
-In future, This repository will support SwinTransformer structure.  
+# Introducing Vision Transformers
+Implementation vision transformer module (specially, attention layer)  
+This repository gives vision attention or embedding Layer.  
 Reference Paper  
 - [An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale](https://arxiv.org/abs/2010.11929)  
+- [Swin Transformer: Hierarchical Vision Transformer using Shifted Windows](https://arxiv.org/abs/2103.14030)
+- [Incorporating Convolution Designs into Visual Transformers](https://arxiv.org/abs/2103.11816)  
 - [CvT: Introducing Convolutions to Vision Transforemrs](https://arxiv.org/abs/2103.15808)  
+- [Contextual Transformer Networks for Visual Recognition](https://arxiv.org/abs/2107.12292)  
 # Folder 
 ```
 ㄴmodel_layer
