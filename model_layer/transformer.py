@@ -7,6 +7,104 @@ from .embedding import *
 
 
 
+class LineTokenConvTransformer(nn.Module):
+    def __init__(self, size, patch_size, in_channels, embedding_dim, depth = 1, heads = 8, dim_head = 8, dim_mlp = 64):
+        super(LineTokenConvTransformer, self).__init__()
+        self.size          = size
+        self.patch_size    = patch_size
+        self.in_channels   = in_channels
+        self.embedding_dim = embedding_dim
+        self.depth         = depth
+        self.heads         = heads
+        self.dim_head      = dim_head
+        self.dim_mlp       = dim_mlp
+
+        self.patch_height = int(size[0]/patch_size[0])
+        self.patch_width  = int(size[1]/patch_size[1])
+
+        # [B C H W] -> [B (hw) embbeding_dim]
+        self.embbedding = LinePatchEmbbeding(
+            in_channels = self.in_channels, patch_size = self.patch_size, embbeding_dim = self.embedding_dim)
+        self.layernorm  = nn.LayerNorm(self.embedding_dim)
+        
+        # [B (hw) embbeding_dim] -> [B embbeding_dim, h, w]
+        self.rearrange  = Rearrange('b (h w) d -> b d h w', h = self.patch_height, w = self.patch_width)
+
+        # self_attention의 in_channels가 embbeding_dim이고 size가 패치의 수가 됨 (자른 패치 사이즈에 대해서 임베딩을 이미 하였으므로)
+        self.attention  = SelfConvTransfomer(
+            size = (self.patch_height, self.patch_width),
+            in_channels = self.embedding_dim,
+            depth = self.depth,
+            heads = self.heads,
+            dim_head = self.dim_head,
+            dim_mlp = self.dim_mlp)
+    
+
+    def forward(self, images):
+        """
+        1. Linear Embbeindg: [B, hw, emb_dim]
+        2. rearrang:  [B, emb_dim, h, w]
+        3. attention: [B, emb_dim, h, w]
+
+        Args:
+            images: [B, C, H, W]
+        returns
+            features: [B, emb_dim, h, w]
+        """
+        features = self.embbedding(images)
+        features = self.layernorm(features)
+
+        features = self.rearrange(features)
+        features = self.attention(features)
+        return features
+
+
+
+class ConvTokenConvTransformer(nn.Module):
+    def __init__(self, size, patch_size, in_channels, embedding_dim, depth = 1, heads = 8, dim_head = 8, dim_mlp = 64):
+        super(ConvTokenConvTransformer, self).__init__()
+        self.size          = size
+        self.patch_size    = patch_size
+        self.in_channels   = in_channels
+        self.embedding_dim = embedding_dim
+        self.depth         = depth
+        self.heads         = heads
+        self.dim_head      = dim_head
+        self.dim_mlp       = dim_mlp
+
+        self.patch_height = int(size[0]/patch_size[0])
+        self.patch_width  = int(size[1]/patch_size[1])
+
+        self.embedding = ConvPatchEmbbeding(
+            in_channels = self.in_channels, patch_size = self.patch_size, embbeding_dim = self.embedding_dim)
+        self.layernorm = nn.LayerNorm(self.embedding_dim)
+
+        self.rearrange = Rearrange('b (h w) d -> b d h w', h = self.patch_height, w = self.patch_width)
+        self.attention = SelfConvTransfomer(
+            size = (self.patch_height, self.patch_width),
+            in_channels = self.embedding_dim,
+            depth = self.depth,
+            heads = self.heads,
+            dim_head = self.dim_head,
+            dim_mlp  = self.dim_mlp)
+    
+    
+    def forward(self, images):
+        """
+        Args:
+            images: [B, C, H, W]
+        returns
+            features: [B, emb_dim, h, w]
+        """
+        features = self.embedding(images)
+        features = self.layernorm(features)
+
+        features = self.rearrange(features)
+        features = self.attention(features)
+        return features
+
+        
+
 """
 README
 Paper: https://arxiv.org/pdf/2103.15808.pdf
@@ -121,102 +219,4 @@ class CrossConvTransformer(nn.Module):
             features = feedforward(pre_norm2(features)) + features
 
         features = self.inverse_shape(features)
-        return features
-
-
-
-class LineTokenConvTransformer(nn.Module):
-    def __init__(self, size, patch_size, in_channels, embedding_dim, depth = 1, heads = 8, dim_head = 8, dim_mlp = 64):
-        super(LineTokenConvTransformer, self).__init__()
-        self.size          = size
-        self.patch_size    = patch_size
-        self.in_channels   = in_channels
-        self.embedding_dim = embedding_dim
-        self.depth         = depth
-        self.heads         = heads
-        self.dim_head      = dim_head
-        self.dim_mlp       = dim_mlp
-
-        self.patch_height = int(size[0]/patch_size[0])
-        self.patch_width  = int(size[1]/patch_size[1])
-
-        # [B C H W] -> [B (hw) embbeding_dim]
-        self.embbedding = LinePatchEmbbeding(
-            in_channels = self.in_channels, patch_size = self.patch_size, embbeding_dim = self.embedding_dim)
-        self.layernorm  = nn.LayerNorm(self.embedding_dim)
-        
-        # [B (hw) embbeding_dim] -> [B embbeding_dim, h, w]
-        self.rearrange  = Rearrange('b (h w) d -> b d h w', h = self.patch_height, w = self.patch_width)
-
-        # self_attention의 in_channels가 embbeding_dim이고 size가 패치의 수가 됨 (자른 패치 사이즈에 대해서 임베딩을 이미 하였으므로)
-        self.attention  = SelfConvTransfomer(
-            size = (self.patch_height, self.patch_width),
-            in_channels = self.embedding_dim,
-            depth = self.depth,
-            heads = self.heads,
-            dim_head = self.dim_head,
-            dim_mlp = self.dim_mlp)
-    
-
-    def forward(self, images):
-        """
-        1. Linear Embbeindg: [B, hw, emb_dim]
-        2. rearrang:  [B, emb_dim, h, w]
-        3. attention: [B, emb_dim, h, w]
-
-        Args:
-            images: [B, C, H, W]
-        returns
-            features: [B, emb_dim, h, w]
-        """
-        features = self.embbedding(images)
-        features = self.layernorm(features)
-
-        features = self.rearrange(features)
-        features = self.attention(features)
-        return features
-
-
-
-class ConvTokenConvTransformer(nn.Module):
-    def __init__(self, size, patch_size, in_channels, embedding_dim, depth = 1, heads = 8, dim_head = 8, dim_mlp = 64):
-        super(ConvTokenConvTransformer, self).__init__()
-        self.size          = size
-        self.patch_size    = patch_size
-        self.in_channels   = in_channels
-        self.embedding_dim = embedding_dim
-        self.depth         = depth
-        self.heads         = heads
-        self.dim_head      = dim_head
-        self.dim_mlp       = dim_mlp
-
-        self.patch_height = int(size[0]/patch_size[0])
-        self.patch_width  = int(size[1]/patch_size[1])
-
-        self.embedding = ConvPatchEmbbeding(
-            in_channels = self.in_channels, patch_size = self.patch_size, embbeding_dim = self.embedding_dim)
-        self.layernorm = nn.LayerNorm(self.embedding_dim)
-
-        self.rearrange = Rearrange('b (h w) d -> b d h w', h = self.patch_height, w = self.patch_width)
-        self.attention = SelfConvTransfomer(
-            size = (self.patch_height, self.patch_width),
-            in_channels = self.embedding_dim,
-            depth = self.depth,
-            heads = self.heads,
-            dim_head = self.dim_head,
-            dim_mlp  = self.dim_mlp)
-    
-    
-    def forward(self, images):
-        """
-        Args:
-            images: [B, C, H, W]
-        returns
-            features: [B, emb_dim, h, w]
-        """
-        features = self.embedding(images)
-        features = self.layernorm(features)
-
-        features = self.rearrange(features)
-        features = self.attention(features)
         return features
